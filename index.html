@@ -232,12 +232,21 @@
 <script>
     const API_BASE_URL = "https://api.melakoni.web.id/api";
 
+    // 1. Inisialisasi Telegram Mini App
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Memaksa aplikasi buka layar penuh
+
+    // ==========================================
+    // WAJIB GANTI ANGKA DI BAWAH INI DENGAN ID-MU
+    const ADMIN_ID = "123456789"; 
+    // ==========================================
+
+    // Ambil ID dari Telegram. 
+    // (Trik: Kalau dibuka di Chrome laptop, otomatis pakai ADMIN_ID agar kamu tetap bisa edit/test tampilannya)
+    const currentUserId = tg.initDataUnsafe?.user?.id || ADMIN_ID;
+
     const formatRp = (angka) => {
-        return new Intl.NumberFormat('id-ID', { 
-            style: 'currency', 
-            currency: 'IDR',
-            maximumFractionDigits: 0
-        }).format(angka);
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka);
     };
 
     const formatDate = (dateString) => {
@@ -245,183 +254,98 @@
         return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
     };
 
-    // Variabel untuk menyimpan Chart
     let myChart;
-
-    // Fungsi Render Grafik
     const renderChart = (pemasukan, pengeluaran) => {
         const ctx = document.getElementById('cashflowChart').getContext('2d');
-        
-        // Hapus chart lama jika ada (mencegah bug tumpuk)
         if (myChart) { myChart.destroy(); }
-
         myChart = new Chart(ctx, {
             type: 'doughnut',
-            data: {
-                labels: ['Pemasukan', 'Pengeluaran'],
-                datasets: [{
-                    data: [pemasukan, pengeluaran],
-                    backgroundColor: ['#10b981', '#f43f5e'],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Inter' } } }
-                }
-            }
+            data: { labels: ['Pemasukan', 'Pengeluaran'], datasets: [{ data: [pemasukan, pengeluaran], backgroundColor: ['#10b981', '#f43f5e'], borderWidth: 0, hoverOffset: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Inter' } } } } }
         });
     };
 
-    // 1. Tarik Saldo & Render Chart
-    fetch(`${API_BASE_URL}/saldo`)
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === "success") {
-                document.getElementById('saldo-aktif').innerText = formatRp(data.data.saldo_aktif);
-                document.getElementById('pemasukan').innerText = '+ ' + formatRp(data.data.pemasukan);
-                document.getElementById('pengeluaran').innerText = '- ' + formatRp(data.data.pengeluaran);
-                
-                // Gambar grafik pakai data dari VPS
-                renderChart(data.data.pemasukan, data.data.pengeluaran);
-            }
-        });
-
-    // 2. Tarik Piutang
-    fetch(`${API_BASE_URL}/piutang`)
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === "success") {
-                document.getElementById('piutang').innerText = formatRp(data.data.total_piutang);
-            }
-        });
-
-    // 3. Tarik Riwayat
-    fetch(`${API_BASE_URL}/riwayat`)
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === "success") {
-                const list = document.getElementById('riwayat-list');
-                list.innerHTML = ''; 
-                
-                if(data.data.length === 0) {
-                    list.innerHTML = "<div style='text-align:center; color:#94a3b8;'>Belum ada transaksi.</div>";
-                    return;
-                }
-
-                data.data.forEach(trx => {
-                    const isMasuk = trx.type === 'masuk';
-                    const sign = isMasuk ? '+' : '-';
-                    const color = isMasuk ? 'var(--emerald)' : 'var(--rose)';
-                    
-                    list.innerHTML += `
-                        <div class="transaction-item">
-                            <div class="trx-info">
-                                <span class="trx-desc">${trx.description}</span>
-                                <span class="trx-date">${formatDate(trx.created_at)}</span>
-                            </div>
-                            <div class="trx-amount" style="color: ${color}">
-                                ${sign} ${formatRp(trx.amount)}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-        });
-
-        // 4. Tarik Data Tabungan
-    fetch(`${API_BASE_URL}/tabungan`)
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === "success") {
-                const list = document.getElementById('tabungan-list');
-                list.innerHTML = '';
-                
-                if(data.data.length === 0) {
-                    list.innerHTML = "<div style='text-align:center; color:#94a3b8; font-size:0.85rem;'>Belum ada target tabungan.</div>";
-                    return;
-                }
-
-                data.data.forEach(tab => {
-                    const persen = tab.target_amount > 0 ? (tab.current_amount / tab.target_amount) * 100 : 0;
-                    const persenBulat = Math.min(persen, 100).toFixed(1); // Maksimal 100%
-                    
-                    list.innerHTML += `
-                        <div style="margin-bottom: 15px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                <strong style="font-size: 0.95rem;">${tab.name.replace('_', ' ')}</strong>
-                                <span style="font-size: 0.85rem; font-weight: 700; color: var(--emerald);">${persenBulat}%</span>
-                            </div>
-                            <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 10px; overflow: hidden;">
-                                <div style="width: ${persenBulat}%; background-color: var(--emerald); height: 100%; border-radius: 10px;"></div>
-                            </div>
-                            <div style="font-size: 0.8rem; color: #64748b; margin-top: 5px; text-align: right;">
-                                Terkumpul: ${formatRp(tab.current_amount)} / ${formatRp(tab.target_amount)}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-        });
-
-    // 5. Tarik Rincian Hutang Per Orang
-    fetch(`${API_BASE_URL}/hutang_detail`)
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === "success") {
-                const list = document.getElementById('hutang-detail-list');
-                list.innerHTML = '';
-                
-                if(data.data.length === 0) {
-                    list.innerHTML = "<div style='text-align:center; color:#94a3b8; font-size:0.85rem;'>Tidak ada piutang aktif. Semua lunas! 🎉</div>";
-                    return;
-                }
-
-                data.data.forEach(org => {
-                    list.innerHTML += `
-                        <div class="transaction-item">
-                            <div class="trx-info">
-                                <span class="trx-desc">👤 ${org.name}</span>
-                            </div>
-                            <div class="trx-amount" style="color: var(--amber);">
-                                ${formatRp(org.sisa)}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-        });
-    // 1. Inisialisasi Telegram Mini App
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // Memaksa aplikasi buka layar penuh
-
-    // 2. Ambil ID User yang sedang membuka aplikasi (Default 0 kalau dibuka di browser biasa)
-    const currentUserId = tg.initDataUnsafe?.user?.id || "0";
-    const ADMIN_ID = "MASUKKAN_ANGKA_ID_KAMU_DISINI";
-
-    // 3. Logika Tampilan (Pisahkan Admin dan Teman)
-    if (currentUserId.toString() === ADMIN_ID || currentUserId === "0") {
-        // --- INI ADALAH AIDIL ---
-        // (Masukkan SEMUA kode fetch() milikmu yang lama ke dalam kurung kurawal ini)
-        // Jangan lupa ubah URL fetch-nya dengan menambahkan parameter user_id, contoh:
-        // fetch(`${API_BASE_URL}/saldo?user_id=${currentUserId}`)
+    // 2. Logika Pengecekan Akses
+    if (currentUserId.toString() === ADMIN_ID) {
         
+        // --- TARIK DATA (HANYA DIEKSEKUSI JIKA ID COCOK) ---
+        
+        // Tarik Saldo (Perhatikan tambahan ?user_id= di belakangnya)
+        fetch(`${API_BASE_URL}/saldo?user_id=${currentUserId}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === "success") {
+                    document.getElementById('saldo-aktif').innerText = formatRp(data.data.saldo_aktif);
+                    document.getElementById('pemasukan').innerText = '+ ' + formatRp(data.data.pemasukan);
+                    document.getElementById('pengeluaran').innerText = '- ' + formatRp(data.data.pengeluaran);
+                    renderChart(data.data.pemasukan, data.data.pengeluaran);
+                }
+            });
+
+        // Tarik Piutang
+        fetch(`${API_BASE_URL}/piutang?user_id=${currentUserId}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === "success") { document.getElementById('piutang').innerText = formatRp(data.data.total_piutang); }
+            });
+
+        // Tarik Riwayat
+        fetch(`${API_BASE_URL}/riwayat?user_id=${currentUserId}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === "success") {
+                    const list = document.getElementById('riwayat-list');
+                    list.innerHTML = ''; 
+                    if(data.data.length === 0) { list.innerHTML = "<div style='text-align:center; color:#94a3b8;'>Belum ada transaksi.</div>"; return; }
+                    data.data.forEach(trx => {
+                        const isMasuk = trx.type === 'masuk';
+                        const sign = isMasuk ? '+' : '-';
+                        const color = isMasuk ? 'var(--emerald)' : 'var(--rose)';
+                        list.innerHTML += `<div class="transaction-item"><div class="trx-info"><span class="trx-desc">${trx.description}</span><span class="trx-date">${formatDate(trx.created_at)}</span></div><div class="trx-amount" style="color: ${color}">${sign} ${formatRp(trx.amount)}</div></div>`;
+                    });
+                }
+            });
+
+        // Tarik Tabungan
+        fetch(`${API_BASE_URL}/tabungan?user_id=${currentUserId}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === "success") {
+                    const list = document.getElementById('tabungan-list');
+                    list.innerHTML = '';
+                    if(data.data.length === 0) { list.innerHTML = "<div style='text-align:center; color:#94a3b8; font-size:0.85rem;'>Belum ada target tabungan.</div>"; return; }
+                    data.data.forEach(tab => {
+                        const persen = tab.target_amount > 0 ? (tab.current_amount / tab.target_amount) * 100 : 0;
+                        const persenBulat = Math.min(persen, 100).toFixed(1);
+                        list.innerHTML += `<div style="margin-bottom: 15px;"><div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><strong style="font-size: 0.95rem;">${tab.name.replace('_', ' ')}</strong><span style="font-size: 0.85rem; font-weight: 700; color: var(--emerald);">${persenBulat}%</span></div><div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 10px; overflow: hidden;"><div style="width: ${persenBulat}%; background-color: var(--emerald); height: 100%; border-radius: 10px;"></div></div><div style="font-size: 0.8rem; color: #64748b; margin-top: 5px; text-align: right;">Terkumpul: ${formatRp(tab.current_amount)} / ${formatRp(tab.target_amount)}</div></div>`;
+                    });
+                }
+            });
+
+        // Tarik Rincian Hutang
+        fetch(`${API_BASE_URL}/hutang_detail?user_id=${currentUserId}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === "success") {
+                    const list = document.getElementById('hutang-detail-list');
+                    list.innerHTML = '';
+                    if(data.data.length === 0) { list.innerHTML = "<div style='text-align:center; color:#94a3b8; font-size:0.85rem;'>Tidak ada piutang aktif. Semua lunas! 🎉</div>"; return; }
+                    data.data.forEach(org => {
+                        list.innerHTML += `<div class="transaction-item"><div class="trx-info"><span class="trx-desc">👤 ${org.name}</span></div><div class="trx-amount" style="color: var(--amber);">${formatRp(org.sisa)}</div></div>`;
+                    });
+                }
+            });
+
     } else {
-        // --- INI ADALAH TEMAN ---
-        // Sembunyikan seluruh isi dashboard, ganti dengan pesan peringatan
+        // --- JIKA YANG BUKA BUKAN AIDIL (TEMAN) ---
         document.querySelector('.container').innerHTML = `
-            <div style="text-align:center; padding-top: 50px;">
-                <h1 style="font-size: 3rem;">🔒</h1>
-                <h2 style="color: var(--text-main);">Akses Ditolak</h2>
-                <p style="color: #64748b;">Dashboard ini adalah area privasi.<br>Hanya Aidil yang bisa melihatnya.</p>
+            <div style="text-align:center; padding-top: 100px;">
+                <h1 style="font-size: 4rem; margin: 0;">🔒</h1>
+                <h2 style="color: var(--accent-navy); margin-top: 20px;">Akses Ditolak</h2>
+                <p style="color: #64748b; line-height: 1.6;">Maaf, dashboard ini adalah area privasi.<br>Hanya Administrator yang memiliki akses ke halaman ini.</p>
             </div>
         `;
     }
 </script>
-
 </body>
 </html>
