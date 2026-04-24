@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brankas Aidil - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --accent-navy: #0f172a;
+            --emerald: #10b981;
+            --rose: #f43f5e;
+            --amber: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            margin: 0;
+            padding-bottom: 40px;
+        }
+
+        .container {
+            max-width: 480px; /* Lebar optimal untuk tampilan HP/Mini App */
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--accent-navy);
+            margin: 0;
+        }
+
+        /* Kartu Saldo Utama */
+        .saldo-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 24px;
+            padding: 30px 20px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15);
+            margin-bottom: 20px;
+        }
+
+        .saldo-card h3 {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .saldo-card h2 {
+            font-size: 2.2rem;
+            margin: 8px 0 0 0;
+            font-weight: 800;
+        }
+
+        /* Grid Statistik */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-item {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        .stat-item h3 {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin: 0 0 4px 0;
+            font-weight: 600;
+        }
+
+        .stat-item p {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        /* Bagian Grafik */
+        .chart-section {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        /* Daftar Transaksi */
+        .transaction-section {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        .transaction-section h3 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: var(--accent-navy);
+            margin-bottom: 15px;
+        }
+
+        .transaction-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .trx-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .trx-desc {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .trx-date {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .trx-amount {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Brankas Aidil</h1>
+    </header>
+
+    <div class="saldo-card">
+        <h3>Total Saldo Aktif</h3>
+        <h2 id="saldo-aktif">Rp ...</h2>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-item">
+            <h3>Pemasukan</h3>
+            <p id="pemasukan" style="color: var(--emerald);">+ Rp 0</p>
+        </div>
+        <div class="stat-item">
+            <h3>Pengeluaran</h3>
+            <p id="pengeluaran" style="color: var(--rose);">- Rp 0</p>
+        </div>
+        <div class="stat-item" style="grid-column: span 2;">
+            <h3>Uang di Luar (Piutang)</h3>
+            <p id="piutang" style="color: var(--amber);">Rp 0</p>
+        </div>
+    </div>
+
+    <div class="chart-section">
+        <h3 style="margin-top:0; font-size: 0.9rem; color: #64748b; text-align: left;">Analisis Arus Kas</h3>
+        <div style="position: relative; height: 180px; width: 100%;">
+            <canvas id="cashflowChart"></canvas>
+        </div>
+    </div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 24px;">
+        
+        <div class="transaction-section">
+            <h3>🎯 Target Tabungan</h3>
+            <div class="transaction-list" id="tabungan-list">
+                <div style="text-align: center; color: #94a3b8; font-size: 0.9rem;">Memuat data...</div>
+            </div>
+        </div>
+
+        <div class="transaction-section">
+            <h3>👥 Rincian Uang di Luar</h3>
+            <div class="transaction-list" id="hutang-detail-list">
+                <div style="text-align: center; color: #94a3b8; font-size: 0.9rem;">Memuat data...</div>
+            </div>
+        </div>
+
+    </div>
+    <div class="transaction-section">
+        <h3>Aktivitas Terakhir</h3>
+        <div class="transaction-list" id="riwayat-list">
+            <div style="text-align: center; color: #94a3b8; font-size: 0.9rem;">Memuat data dari VPS...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE_URL = "http://147.139.163.53:5000/api";
+
+    const formatRp = (angka) => {
+        return new Intl.NumberFormat('id-ID', { 
+            style: 'currency', 
+            currency: 'IDR',
+            maximumFractionDigits: 0
+        }).format(angka);
+    };
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
+    };
+
+    // Variabel untuk menyimpan Chart
+    let myChart;
+
+    // Fungsi Render Grafik
+    const renderChart = (pemasukan, pengeluaran) => {
+        const ctx = document.getElementById('cashflowChart').getContext('2d');
+        
+        // Hapus chart lama jika ada (mencegah bug tumpuk)
+        if (myChart) { myChart.destroy(); }
+
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pemasukan', 'Pengeluaran'],
+                datasets: [{
+                    data: [pemasukan, pengeluaran],
+                    backgroundColor: ['#10b981', '#f43f5e'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Inter' } } }
+                }
+            }
+        });
+    };
+
+    // 1. Tarik Saldo & Render Chart
+    fetch(`${API_BASE_URL}/saldo`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") {
+                document.getElementById('saldo-aktif').innerText = formatRp(data.data.saldo_aktif);
+                document.getElementById('pemasukan').innerText = '+ ' + formatRp(data.data.pemasukan);
+                document.getElementById('pengeluaran').innerText = '- ' + formatRp(data.data.pengeluaran);
+                
+                // Gambar grafik pakai data dari VPS
+                renderChart(data.data.pemasukan, data.data.pengeluaran);
+            }
+        });
+
+    // 2. Tarik Piutang
+    fetch(`${API_BASE_URL}/piutang`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") {
+                document.getElementById('piutang').innerText = formatRp(data.data.total_piutang);
+            }
+        });
+
+    // 3. Tarik Riwayat
+    fetch(`${API_BASE_URL}/riwayat`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") {
+                const list = document.getElementById('riwayat-list');
+                list.innerHTML = ''; 
+                
+                if(data.data.length === 0) {
+                    list.innerHTML = "<div style='text-align:center; color:#94a3b8;'>Belum ada transaksi.</div>";
+                    return;
+                }
+
+                data.data.forEach(trx => {
+                    const isMasuk = trx.type === 'masuk';
+                    const sign = isMasuk ? '+' : '-';
+                    const color = isMasuk ? 'var(--emerald)' : 'var(--rose)';
+                    
+                    list.innerHTML += `
+                        <div class="transaction-item">
+                            <div class="trx-info">
+                                <span class="trx-desc">${trx.description}</span>
+                                <span class="trx-date">${formatDate(trx.created_at)}</span>
+                            </div>
+                            <div class="trx-amount" style="color: ${color}">
+                                ${sign} ${formatRp(trx.amount)}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        });
+
+        // 4. Tarik Data Tabungan
+    fetch(`${API_BASE_URL}/tabungan`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") {
+                const list = document.getElementById('tabungan-list');
+                list.innerHTML = '';
+                
+                if(data.data.length === 0) {
+                    list.innerHTML = "<div style='text-align:center; color:#94a3b8; font-size:0.85rem;'>Belum ada target tabungan.</div>";
+                    return;
+                }
+
+                data.data.forEach(tab => {
+                    const persen = tab.target_amount > 0 ? (tab.current_amount / tab.target_amount) * 100 : 0;
+                    const persenBulat = Math.min(persen, 100).toFixed(1); // Maksimal 100%
+                    
+                    list.innerHTML += `
+                        <div style="margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong style="font-size: 0.95rem;">${tab.name.replace('_', ' ')}</strong>
+                                <span style="font-size: 0.85rem; font-weight: 700; color: var(--emerald);">${persenBulat}%</span>
+                            </div>
+                            <div style="width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 10px; overflow: hidden;">
+                                <div style="width: ${persenBulat}%; background-color: var(--emerald); height: 100%; border-radius: 10px;"></div>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #64748b; margin-top: 5px; text-align: right;">
+                                Terkumpul: ${formatRp(tab.current_amount)} / ${formatRp(tab.target_amount)}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        });
+
+    // 5. Tarik Rincian Hutang Per Orang
+    fetch(`${API_BASE_URL}/hutang_detail`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") {
+                const list = document.getElementById('hutang-detail-list');
+                list.innerHTML = '';
+                
+                if(data.data.length === 0) {
+                    list.innerHTML = "<div style='text-align:center; color:#94a3b8; font-size:0.85rem;'>Tidak ada piutang aktif. Semua lunas! 🎉</div>";
+                    return;
+                }
+
+                data.data.forEach(org => {
+                    list.innerHTML += `
+                        <div class="transaction-item">
+                            <div class="trx-info">
+                                <span class="trx-desc">👤 ${org.name}</span>
+                            </div>
+                            <div class="trx-amount" style="color: var(--amber);">
+                                ${formatRp(org.sisa)}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        });
+</script>
+
+</body>
+</html>
